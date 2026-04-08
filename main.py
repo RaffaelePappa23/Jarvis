@@ -75,31 +75,33 @@ def main():
                 file_audio = ears.registra_audio(soglia_volume=300, silenzio_max=1.5)
                 
                 if file_audio:
+                    # Questa parte viene eseguita SOLO se ha effettivamente registrato un file
                     testo_utente = ears.trascrivi_audio(modello_orecchie, file_audio)
                     print(f"Tu: {testo_utente}")
 
-                if testo_utente:
-                    # B. CERVELLO
-                    print("Elaborazione in corso...")
-                    risposta_json, cronologia = brain.interroga_jarvis(testo_utente, cronologia)
-                    
-                    if risposta_json:
-                        testo_jarvis = risposta_json.get("risposta_vocale", "Errore nel formato vocale.")
-                        azione = risposta_json.get("azione_pc", "nessuna")
+                    if testo_utente:
+                        # B. CERVELLO
+                        print("Elaborazione in corso...")
+                        risposta_json, cronologia = brain.interroga_jarvis(testo_utente, cronologia)
                         
-                        print(f"Jarvis: {testo_jarvis}")
-                        
-                        # C. BOCCA
-                        mouth.parla(modello_bocca, testo_jarvis)
+                        if risposta_json:
+                            testo_jarvis = risposta_json.get("risposta_vocale", "Errore nel formato vocale.")
+                            azione = risposta_json.get("azione_pc", "nessuna")
+                            
+                            print(f"Jarvis: {testo_jarvis}")
+                            
+                            # C. BOCCA
+                            mouth.parla(modello_bocca, testo_jarvis)
 
-                        # D. AZIONE (Phase 4 placeholder)
-                        if azione != "nessuna":
-                            print(f"[SISTEMA] Azione in coda: {azione}")
+                            # D. AZIONE 
+                            if azione != "nessuna":
+                                print(f"[SISTEMA] Azione in coda: {azione}")
                 
-                # SE NON HA SENTITO NULLA (Timeout)
                 else:
+                    # Questa parte viene eseguita se c'è stato solo silenzio
                     print("[SISTEMA] Operazione annullata per inattività.")
-                    
+
+                # --- QUESTO DEVE RIMANERE SEMPRE ALLA FINE DELL'IF DELLA WAKE WORD ---
                 # Reset buffer per evitare riattivazione immediata
                 oww_model.reset()
                 print("\n[ASCOLTO...] In attesa della wake word.")
