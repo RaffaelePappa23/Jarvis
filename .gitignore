@@ -1,0 +1,15 @@
+# Ambienti virtuali
+venv/
+
+# Cartelle dei Modelli IA (Pesantissime!)
+Modelli_Ollama/
+Modelli_Voce/
+modelli_wakeword/
+
+# Cache e file di sistema Python
+__pycache__/
+*.pyc
+
+# File audio temporanei generati durante l'uso
+temp_audio.wav
+risposta_jarvis.wav
