@@ -9,9 +9,10 @@ import numpy as np
 from openwakeword.model import Model
 import openwakeword
 
-import mouth  # <--- Sposta mouth prima di ears
+import mouth  # mouth prima di ears
 import ears
 import brain
+import hands
 
 # --- CONFIGURAZIONI AUDIO ---
 CHUNK = 1280
@@ -104,7 +105,8 @@ def main():
                             azione = dati_finali.get("azione_pc", "nessuna")
                             if azione != "nessuna":
                                 print(f"[SISTEMA] Azione tradotta per le mani: {azione}")
-                                # Qui chiamerai il tuo futuro hands.py !
+                                # Chiamata al nuovo modulo hands
+                                hands.esegui_azione(azione)
                 
                 else:
                     # Questa parte viene eseguita se c'è stato solo silenzio
