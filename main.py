@@ -75,27 +75,36 @@ def main():
                 file_audio = ears.registra_audio(soglia_volume=300, silenzio_max=1.5)
                 
                 if file_audio:
-                    # Questa parte viene eseguita SOLO se ha effettivamente registrato un file
                     testo_utente = ears.trascrivi_audio(modello_orecchie, file_audio)
                     print(f"Tu: {testo_utente}")
 
                     if testo_utente:
-                        # B. CERVELLO
-                        print("Elaborazione in corso...")
-                        risposta_json, cronologia = brain.interroga_jarvis(testo_utente, cronologia)
+                        # B & C: CERVELLO E BOCCA IN STREAMING SINCRONIZZATO
+                        print("🧠 Jarvis sta pensando e parlando...")
                         
-                        if risposta_json:
-                            testo_jarvis = risposta_json.get("risposta_vocale", "Errore nel formato vocale.")
-                            azione = risposta_json.get("azione_pc", "nessuna")
-                            
-                            print(f"Jarvis: {testo_jarvis}")
-                            
-                            # C. BOCCA
-                            mouth.parla(modello_bocca, testo_jarvis)
+                        stream_risposte = brain.interroga_jarvis_stream(testo_utente, cronologia)
+                        dati_finali = None
+                        
+                        # Questo mini-generatore prende il mix (Testo + Dati JSON) 
+                        # smista le frasi alla bocca e si salva il JSON per dopo
+                        def estrai_frasi():
+                            nonlocal dati_finali, cronologia
+                            for tipo, dato in stream_risposte:
+                                if tipo == "testo":
+                                    yield dato
+                                elif tipo == "dati":
+                                    dati_finali, cronologia = dato
+                        
+                        # Passiamo l'estrattore direttamente alla nuova funzione stream
+                        mouth.parla_stream(modello_bocca, estrai_frasi())
 
-                            # D. AZIONE 
+                        # D. AZIONI FISICHE
+                        # Eseguite non appena Jarvis finisce di estrarre l'informazione dal JSON
+                        if dati_finali:
+                            azione = dati_finali.get("azione_pc", "nessuna")
                             if azione != "nessuna":
-                                print(f"[SISTEMA] Azione in coda: {azione}")
+                                print(f"[SISTEMA] Azione tradotta per le mani: {azione}")
+                                # Qui chiamerai il tuo futuro hands.py !
                 
                 else:
                     # Questa parte viene eseguita se c'è stato solo silenzio

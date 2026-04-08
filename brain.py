@@ -1,14 +1,12 @@
 import ollama
 import json
+import re
 
-# Definiamo il modello che hai appena scaricato
 MODELLO_LLM = 'llama3' 
 
-# Il System Prompt: l'anima di Jarvis e le sue regole ferree
 SYSTEM_PROMPT = """Sei JARVIS, la mia intelligenza artificiale personale e assistente di sistema.
 Rispondi SEMPRE in italiano, qualunque cosa ti venga chiesta.
 Il tuo tono è formale, educato, servizievole ma con un tocco di sottile sarcasmo.
-
 
 REGOLE FONDAMENTALI:
 1. Devi SEMPRE rispondere utilizzando ESCLUSIVAMENTE un formato JSON valido. 
@@ -22,32 +20,62 @@ Formato JSON richiesto (usa esattamente queste chiavi):
 }
 """
 
-def interroga_jarvis(prompt_utente, cronologia_chat=[]):
-    """Invia il messaggio a Ollama locale e forza l'output strutturato."""
+def interroga_jarvis_stream(prompt_utente, cronologia_chat=[]):
+    """Interroga Ollama in streaming, restituendo le frasi al volo e il JSON alla fine."""
     messaggi = [{"role": "system", "content": SYSTEM_PROMPT}]
     messaggi.extend(cronologia_chat)
     messaggi.append({"role": "user", "content": prompt_utente})
 
     try:
-        # Chiamata al modello locale
-        response = ollama.chat(
+        stream = ollama.chat(
             model=MODELLO_LLM,
             messages=messaggi,
-            format='json' 
+            format='json',
+            stream=True  # ATTIVIAMO LO STREAMING
         )
         
-        risposta_testo = response['message']['content']
-        dati_jarvis = json.loads(risposta_testo)
-        
+        testo_completo = ""
+        valore_vocale_estratto = ""
+        buffer_frase = ""
+        punteggiatura_fine = ['.', '!', '?', ':']
+
+        for chunk in stream:
+            frammento = chunk['message']['content']
+            testo_completo += frammento
+            
+            # Estraiamo dinamicamente dal JSON in costruzione usando una Regex sicura
+            match = re.search(r'"risposta_vocale"\s*:\s*"((?:[^"\\]|\\.)*)', testo_completo)
+            if match:
+                # Ripuliamo gli eventuali escape (es. \" o \n)
+                testo_attuale = match.group(1).replace('\\"', '"').replace('\\n', ' ')
+                nuovi_caratteri = testo_attuale[len(valore_vocale_estratto):]
+                valore_vocale_estratto = testo_attuale
+                
+                if nuovi_caratteri:
+                    buffer_frase += nuovi_caratteri
+                    
+                    # Controlliamo se è finita una frase per poterla inviare alla bocca
+                    for p in punteggiatura_fine:
+                        if p in buffer_frase:
+                            parti = buffer_frase.split(p, 1)
+                            frase_da_dire = parti[0] + p
+                            # Cedi la frase al programma principale (Yield)
+                            yield ("testo", frase_da_dire.strip())
+                            buffer_frase = parti[1]
+                            break 
+
+        # Svuotiamo eventuali residui nel buffer
+        if buffer_frase.strip():
+            yield ("testo", buffer_frase.strip())
+
+        # A stream concluso, il JSON è completo. Lo analizziamo.
+        dati_jarvis = json.loads(testo_completo)
         cronologia_chat.append({"role": "user", "content": prompt_utente})
-        cronologia_chat.append({"role": "assistant", "content": risposta_testo})
+        cronologia_chat.append({"role": "assistant", "content": testo_completo})
         
-        return dati_jarvis, cronologia_chat
+        # Cediamo i dati strutturati per l'Azione PC
+        yield ("dati", (dati_jarvis, cronologia_chat))
 
-    except json.JSONDecodeError:
-        print("\n[ERRORE] Jarvis non ha usato il formato JSON.")
-        return None, cronologia_chat
     except Exception as e:
-        print(f"\n[ERRORE DI SISTEMA]: {e}")
-        return None, cronologia_chat
-
+        print(f"\n[ERRORE DI SISTEMA CERVELLO STREAM]: {e}")
+        yield ("dati", (None, cronologia_chat))
