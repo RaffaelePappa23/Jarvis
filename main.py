@@ -100,13 +100,14 @@ def main():
                         mouth.parla_stream(modello_bocca, estrai_frasi())
 
                         # D. AZIONI FISICHE
-                        # Eseguite non appena Jarvis finisce di estrarre l'informazione dal JSON
                         if dati_finali:
                             azione = dati_finali.get("azione_pc", "nessuna")
+                            target = dati_finali.get("target", "")
+                            valore = dati_finali.get("valore", 0)
+                            
                             if azione != "nessuna":
-                                print(f"[SISTEMA] Azione tradotta per le mani: {azione}")
-                                # Chiamata al nuovo modulo hands
-                                hands.esegui_azione(azione)
+                                print(f"[SISTEMA] Azione: {azione} | Target: {target} | Valore: {valore}")
+                                hands.esegui_azione(azione, target, valore)
                 
                 else:
                     # Questa parte viene eseguita se c'è stato solo silenzio
