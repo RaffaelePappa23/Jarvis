@@ -72,9 +72,11 @@ def main():
                 mic_stream.stop_stream()
 
                 # A. ORECCHIE
-                file_audio = ears.registra_audio(secondi=5)
-                testo_utente = ears.trascrivi_audio(modello_orecchie, file_audio)
-                print(f"Tu: {testo_utente}")
+                file_audio = ears.registra_audio(soglia_volume=300, silenzio_max=1.5)
+                
+                if file_audio:
+                    testo_utente = ears.trascrivi_audio(modello_orecchie, file_audio)
+                    print(f"Tu: {testo_utente}")
 
                 if testo_utente:
                     # B. CERVELLO
@@ -94,6 +96,10 @@ def main():
                         if azione != "nessuna":
                             print(f"[SISTEMA] Azione in coda: {azione}")
                 
+                # SE NON HA SENTITO NULLA (Timeout)
+                else:
+                    print("[SISTEMA] Operazione annullata per inattività.")
+                    
                 # Reset buffer per evitare riattivazione immediata
                 oww_model.reset()
                 print("\n[ASCOLTO...] In attesa della wake word.")

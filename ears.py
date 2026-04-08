@@ -1,6 +1,8 @@
 import pyaudio
 import wave
 import os
+import time
+import numpy as np
 from faster_whisper import WhisperModel
 
 # Costanti
@@ -12,21 +14,56 @@ WAVE_OUTPUT_FILENAME = "temp_audio.wav"
 
 def inizializza_orecchie():
     print("Caricamento modello Whisper (base) in VRAM...")
-    # Lo carichiamo una volta sola qui
     return WhisperModel("base", device="cuda", compute_type="float16")
 
-def registra_audio(secondi=5):
-    """Registra per un tempo fisso (per ora)."""
+def registra_audio(soglia_volume=300, silenzio_max=1.5, timeout_iniziale=5.0):
+    """
+    Registra dinamicamente: inizia quando c'è rumore, si ferma dopo 'silenzio_max' secondi di quiete.
+    Se non sente nulla per 'timeout_iniziale' secondi, annulla.
+    """
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     
-    print("* Ascolto...")
+    print("* In ascolto (parla ora)...")
     frames = []
-    for _ in range(0, int(RATE / CHUNK * secondi)):
-        data = stream.read(CHUNK)
-        frames.append(data)
+    in_registrazione = False
     
-    print("* Elaborazione...")
+    inizio_ascolto = time.time()
+    tempo_ultimo_suono = time.time()
+
+    while True:
+        # Leggiamo il chunk audio
+        data = stream.read(CHUNK, exception_on_overflow=False)
+        audio_data = np.frombuffer(data, dtype=np.int16)
+        
+        # Calcoliamo il volume (RMS)
+        # Usiamo float32 per evitare overflow durante il calcolo
+        volume = np.sqrt(np.mean(audio_data.astype(np.float32)**2))
+
+        if volume > soglia_volume:
+            if not in_registrazione:
+                print("* Voce rilevata, sto acquisendo...")
+                in_registrazione = True
+            tempo_ultimo_suono = time.time()
+            frames.append(data)
+            
+        elif in_registrazione:
+            # Stiamo registrando, ma il volume è sotto la soglia (silenzio)
+            frames.append(data)
+            if time.time() - tempo_ultimo_suono > silenzio_max:
+                print("* Pausa rilevata, elaborazione in corso...")
+                break
+                
+        else:
+            # Non stiamo ancora registrando, controlliamo il timeout iniziale
+            if time.time() - inizio_ascolto > timeout_iniziale:
+                print("* Nessun comando vocale rilevato.")
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
+                return None # Nessun file creato
+
+    # Salvataggio del file
     stream.stop_stream()
     stream.close()
     p.terminate()
@@ -37,10 +74,10 @@ def registra_audio(secondi=5):
     wf.setframerate(RATE)
     wf.writeframes(b''.join(frames))
     wf.close()
+    
     return WAVE_OUTPUT_FILENAME
 
 def trascrivi_audio(modello_whisper, file_audio):
-    """Usa il modello già caricato per trascrivere."""
     segments, info = modello_whisper.transcribe(file_audio, beam_size=5, language="it")
     testo_completo = " ".join([segment.text for segment in segments])
     
