@@ -30,20 +30,34 @@ def modifica_volume(delta):
 
 def attiva_finestra(nome_app):
     """Cerca una finestra aperta tramite il nome e la porta in primo piano."""
+    
+    # 1. DIZIONARIO DEI SINONIMI: Adattalo ai tuoi programmi!
+    sinonimi = {
+        "browser": ["brave", "chrome", "edge", "firefox"],
+        "chrome": ["brave", "chrome"],  # Se il LLM dice chrome, cerchiamo brave
+        "esplora file": ["esplora file", "explorer", "cartella", "documenti"]
+    }
+    
+    nome_app_lower = nome_app.lower().strip()
+    # 2. Se la parola è nel dizionario, usa la lista dei sinonimi. Altrimenti usa la parola esatta.
+    termini_ricerca = sinonimi.get(nome_app_lower, [nome_app_lower])
+
     finestre = gw.getAllTitles()
-    # Cerca una corrispondenza parziale (es. "chrome" in "Nuova scheda - Google Chrome")
     for titolo in finestre:
-        if nome_app.lower() in titolo.lower() and titolo.strip() != "":
+        titolo_lower = titolo.lower()
+        # 3. Controlla se ALMENO UNO dei termini di ricerca è nel titolo
+        if any(termine in titolo_lower for termine in termini_ricerca) and titolo.strip() != "":
             try:
                 win = gw.getWindowsWithTitle(titolo)[0]
                 if win.isMinimized:
                     win.restore()
                 win.activate()
-                time.sleep(0.3) # Aspetta che Windows metta a fuoco la finestra
+                time.sleep(0.3) # Aspetta il focus di Windows
                 return True
             except Exception as e:
                 print(f"[MANI] Errore nell'attivazione della finestra: {e}")
-    print(f"[MANI] Finestra '{nome_app}' non trovata.")
+                
+    print(f"[MANI] Nessuna finestra trovata per '{nome_app}' (termini cercati: {termini_ricerca}).")
     return False
 
 def esegui_azione(azione, target="", valore=0):
@@ -82,22 +96,50 @@ def esegui_azione(azione, target="", valore=0):
 
         # --- SPOSTAMENTO FINESTRE ---
         elif azione == "sposta_finestra":
-            # Il target qui è "nome_app, direzione" (es. "chrome, destra")
             parti = target.split(",")
             nome_app = parti[0].strip()
             direzione = parti[1].strip().lower() if len(parti) > 1 else "destra"
 
             if attiva_finestra(nome_app):
+                # PAUSA CRITICA: Diamo a Windows mezzo secondo per completare il focus
+                time.sleep(0.5) 
+
                 if direzione == "destra":
-                    pyautogui.hotkey('win', 'shift', 'right')
+                    # Metodo forzato: premiamo fisicamente giù i tasti modificatori
+                    pyautogui.keyDown('win')
+                    pyautogui.keyDown('shift')
+                    pyautogui.press('right')
+                    pyautogui.keyUp('shift')
+                    pyautogui.keyUp('win')
+                    
                 elif direzione == "sinistra":
-                    pyautogui.hotkey('win', 'shift', 'left')
+                    pyautogui.keyDown('win')
+                    pyautogui.keyDown('shift')
+                    pyautogui.press('left')
+                    pyautogui.keyUp('shift')
+                    pyautogui.keyUp('win')
+                    
                 elif direzione == "su":
-                    pyautogui.hotkey('win', 'up')
+                    # Per il monitor in alto, Win+Su prima massimizza, poi spinge su
+                    pyautogui.keyDown('win')
+                    pyautogui.press('up')
                     time.sleep(0.1)
-                    pyautogui.hotkey('win', 'up')
+                    pyautogui.press('up')
+                    pyautogui.keyUp('win')
+                    
                 elif direzione == "giu" or direzione == "giù":
-                    pyautogui.hotkey('win', 'down')
+                    pyautogui.keyDown('win')
+                    pyautogui.press('down')
+                    pyautogui.keyUp('win')
+                    
+                elif direzione == "centro":
+                    # Windows non ha un comando per "centro". Per ciclare usiamo sinistra
+                    print("⚠️ [MANI] Uso 'sinistra' per far ruotare la finestra verso il centro.")
+                    pyautogui.keyDown('win')
+                    pyautogui.keyDown('shift')
+                    pyautogui.press('left')
+                    pyautogui.keyUp('shift')
+                    pyautogui.keyUp('win')
                     
     except Exception as e:
          print(f"⚠️ [MANI] Errore durante l'esecuzione dell'azione: {e}")

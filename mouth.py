@@ -65,12 +65,16 @@ def parla_stream(tts_model, generatore_frasi, file_campione="campione.wav"):
         if not frase.strip() or not any(c.isalpha() for c in frase):
             continue
             
+        # FIX PUNTO: XTTS in italiano a volte legge il "." come parola. 
+        # Lo sostituiamo con una virgola per mantenere la pausa vocale.
+        frase_pulita = frase.replace(".", ",")
+            
         file_output = f"temp_jarvis_stream_{contatore}.wav"
-        print(f"🗣️ [TTS IN CORSO]: {frase}")
+        print(f"🗣️ [TTS IN CORSO]: {frase_pulita}")
         
-        # Genera il file WAV
+        # Genera il file WAV usando la frase pulita
         tts_model.tts_to_file(
-            text=frase,
+            text=frase_pulita,
             speaker_wav=file_campione,
             language="it",
             file_path=file_output

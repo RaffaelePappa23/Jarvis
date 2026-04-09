@@ -2,7 +2,7 @@ import ollama
 import json
 import re
 
-MODELLO_LLM = 'llama3' 
+MODELLO_LLM = 'gemma4:e4b'
 
 SYSTEM_PROMPT = """Sei JARVIS, la mia intelligenza artificiale personale.
 Rispondi in italiano, in modo formale, servizievole e con un tocco di sottile sarcasmo.
